@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { ArrowLeft, CircleAlert, Clock } from "lucide-react";
@@ -33,6 +33,7 @@ import { Switch } from "@/components/switch";
 import TimeZoneSelect from "../appointment/components/timeZoneSelectmenu";
 import Spinner from "@/components/spinner";
 import GroupMeetSkeleton from "./components/groupMeetSkeleton";
+import ContactForm from "./components/contactForm";
 import { Skeleton } from "@/components/skeleton";
 import { getIconForKey, validTitle } from "./utils";
 import { useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
@@ -81,6 +82,52 @@ const GroupAppointment = () => {
   const { call: bookMeeting, loading } = useFrappePostCall(
     "frappe_appointment.api.group_meet.book_time_slot"
   );
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState("");
+
+  const { data: companyData } = useFrappeGetCall(
+    "frappe_appointment.api.group_meet.get_company_options",
+    { appointment_group_id: groupId },
+    undefined,
+    { revalidateOnFocus: false, revalidateOnReconnect: false }
+  );
+
+  const companyOptions = useMemo(
+    () => companyData?.message?.options || [],
+    [companyData]
+  );
+
+  useEffect(() => {
+    if (companyData?.message?.default && !selectedCompany) {
+      setSelectedCompany(companyData.message.default);
+    }
+  }, [companyData]);
+
+  const { call: lookupContact } = useFrappePostCall(
+    "frappe_appointment.api.group_meet.lookup_contact"
+  );
+
+  const applyContactLookup = async (lookupParams: {
+    email?: string;
+    phone?: string;
+  }) => {
+    if (!lookupParams.email && !lookupParams.phone) return;
+    try {
+      const res = await lookupContact(lookupParams);
+      if (res?.message?.found) {
+        setFullName((prev) => prev || res.message.full_name || "");
+        setEmail((prev) => prev || res.message.email || "");
+        setPhone((prev) => prev || res.message.phone || "");
+      }
+    } catch {
+      // Best-effort prefill only -- a failed lookup shouldn't block booking.
+    }
+  };
+
+  const contactValid = fullName.trim().length >= 2 && /\S+@\S+\.\S+/.test(email);
 
   useEffect(() => {
     if (data) {
@@ -176,6 +223,10 @@ const GroupAppointment = () => {
       ),
       start_time: state.selectedSlot!.start_time,
       end_time: state.selectedSlot!.end_time,
+      user_name: fullName,
+      user_email: email,
+      user_phone: phone,
+      company: selectedCompany,
     };
 
     bookMeeting(meetingData)
@@ -396,7 +447,9 @@ const GroupAppointment = () => {
                     (state.selectedSlot?.start_time &&
                     state.selectedSlot?.end_time
                       ? false
-                      : true) || loading
+                      : true) ||
+                    loading ||
+                    (!(reschedule && event_token) && !contactValid)
                   }
                   className={cn(
                     "bg-blue-500 dark:bg-blue-400 flex hover:bg-blue-500 dark:hover:bg-blue-400 w-fit px-10",
@@ -470,8 +523,28 @@ const GroupAppointment = () => {
                       </div>
                     )}
                   </div>
+                  {state.selectedSlot?.start_time &&
+                    state.selectedSlot?.end_time &&
+                    !(reschedule && event_token) && (
+                      <ContactForm
+                        fullName={fullName}
+                        email={email}
+                        phone={phone}
+                        onFullNameChange={setFullName}
+                        onEmailChange={setEmail}
+                        onPhoneChange={setPhone}
+                        onEmailBlur={() => applyContactLookup({ email })}
+                        onPhoneBlur={() => applyContactLookup({ phone })}
+                        companyOptions={companyOptions}
+                        selectedCompany={selectedCompany}
+                        onCompanyChange={setSelectedCompany}
+                        disabled={loading}
+                      />
+                    )}
                   <Button
-                    disabled={loading}
+                    disabled={
+                      loading || (!(reschedule && event_token) && !contactValid)
+                    }
                     className={cn(
                       "bg-blue-500 dark:bg-blue-400 hover:bg-blue-500 dark:hover:bg-blue-400 lg:!mt-0 max-lg:w-full hidden",
                       state.selectedSlot?.start_time &&

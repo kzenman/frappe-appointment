@@ -151,8 +151,13 @@ def book_time_slot(
     user_name: str,
     user_email: str,
     other_participants: str = None,
+    user_phone: str = None,
     **args,
 ):
+    if user_phone:
+        existing_description = args.get("description") or ""
+        args["description"] = f"Phone: {user_phone}" + (f"\n\n{existing_description}" if existing_description else "")
+
     duration = frappe.get_doc("Appointment Slot Duration", duration_id)
 
     user_availability = frappe.get_all(

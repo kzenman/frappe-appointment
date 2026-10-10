@@ -36,6 +36,7 @@ import Spinner from "@/components/spinner";
 const contactFormSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
+  phone: z.string().optional(),
   guests: z.array(z.string().email("Please enter a valid email address")),
 });
 
@@ -69,6 +70,7 @@ const MeetingForm = ({
     defaultValues: {
       fullName: "",
       email: "",
+      phone: "",
       guests: [],
     },
   });
@@ -116,6 +118,7 @@ const MeetingForm = ({
       end_time: selectedSlot.end_time,
       user_name: data.fullName,
       user_email: data.email,
+      user_phone: data.phone,
       other_participants: data.guests.join(", "),
     };
 
@@ -229,6 +232,25 @@ const MeetingForm = ({
                       form.formState.errors.email ? "text-red-500" : ""
                     }`}
                   />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      className="active:ring-blue-400 focus-visible:ring-blue-400"
+                      placeholder="(555) 555-5555"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
