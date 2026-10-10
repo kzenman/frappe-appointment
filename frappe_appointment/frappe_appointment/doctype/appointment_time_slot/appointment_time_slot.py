@@ -93,7 +93,11 @@ def get_google_calendar_slots_member(
     try:
         google_calendar_api_obj, account = get_google_calendar_object(google_calendar.name)
     except Exception:
-        raise GoogleBadRequest(_("Google Calendar - Could not create Google Calendar API object."))
+        frappe.log_error(
+            title="Google Calendar API init failed",
+            message=f"Skipping google sync for user {member} / calendar {google_calendar.name}",
+        )
+        return []
 
     events = []
 
@@ -127,9 +131,12 @@ def get_google_calendar_slots_member(
         #     .execute()
         # )
     except Exception as err:
-        frappe.throw(
-            _("Google Calendar - Could not fetch event from Google Calendar, error code {0}.").format(err.resp.status)
+        status = getattr(getattr(err, "resp", None), "status", "unknown")
+        frappe.log_error(
+            title="Google Calendar event fetch failed",
+            message=f"Skipping google event fetch for user {member}. Status: {status}",
         )
+        return []
 
     events_items = events["items"]
     range_events = []

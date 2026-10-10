@@ -10,6 +10,7 @@ from frappe.integrations.doctype.google_calendar.google_calendar import (
     repeat_on_to_google_calendar_recurrence_rule,
 )
 from frappe.utils.data import get_datetime
+from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
 from frappe_appointment.helpers import api_urls
@@ -33,7 +34,15 @@ def insert_event_in_google_calendar_override(
     if not success_msg:
         success_msg = _("Event Synced with Google Calendar.")
 
-    google_calendar, account = get_google_calendar_object(doc.google_calendar)
+    try:
+        google_calendar, account = get_google_calendar_object(doc.google_calendar)
+    except RefreshError:
+        frappe.throw(
+            _(
+                "Google Calendar - The connection to {0} has expired or been revoked. "
+                "Please reconnect it from the Google Calendar settings before booking."
+            ).format(doc.google_calendar)
+        )
 
     if not account.push_to_google_calendar:
         if update_doc:
@@ -62,7 +71,16 @@ def insert_event_in_google_calendar_override(
     if doc.custom_create_free_event:
         event.update({"transparency": "transparent"})
 
-    event.update({"attendees": get_attendees(doc)})
+    attendees = get_attendees(doc)
+    if account.custom_exclude_owner_as_attendee:
+        # On a dedicated sub-calendar, the owner already sees every event
+        # inserted into it -- also listing them as an attendee makes Google
+        # Calendar mirror a duplicate copy onto their primary calendar. Only
+        # drop them when the calendar is explicitly marked as a sub-calendar;
+        # a shop with just one (non-sub) calendar still needs the owner as
+        # an attendee to be notified at all.
+        attendees = [a for a in attendees if a.get("email") != account.user]
+    event.update({"attendees": attendees})
 
     conference_data_version = 0
 
