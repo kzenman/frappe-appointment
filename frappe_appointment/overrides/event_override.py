@@ -218,6 +218,19 @@ class EventOverride(Event):
 
     def on_update(self):
         self.sync_communication()  # Overrided this because we have made reference doctype and name non-mandatory in Event Participants
+        self.mirror_to_vmator_appointment()
+
+    def mirror_to_vmator_appointment(self):
+        """If this Event is linked to a Vmator Appointment (a change made in Google, pulled
+        back, or any edit to the Event), keep the appointment's time/status in line."""
+        if "vmator" not in frappe.get_installed_apps():
+            return
+        try:
+            from vmator.api.appointments import mirror_event_to_appointment
+
+            mirror_event_to_appointment(self)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Could not mirror Event to Vmator Appointment")
 
     def sync_communication(self):
         if self.event_participants:
