@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "group_name",
+  "company",
   "column_break_kcm2",
   "event_creator",
   "event_organizer",
@@ -71,6 +72,14 @@
    "label": "Group Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "description": "The location (Company) this group serves, and so which Google Calendar its bookings go to. Leave empty for the shop-wide default group used by every location without a group of its own.",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Location (Company)",
+   "options": "Company"
   },
   {
    "default": "0",
@@ -250,7 +259,7 @@
   }
  ],
  "links": [],
- "modified": "2025-04-23 11:11:22.130701",
+ "modified": "2026-10-13 12:19:26.199188",
  "modified_by": "Administrator",
  "module": "Frappe Appointment",
  "name": "Appointment Group",

@@ -128,10 +128,20 @@ def book_time_slot(
                 end_datetime=utc_to_sys_time(end_time),
                 company=company,
             )
+            links = []
             if result.get("crm_lead"):
-                args["custom_doctype_link_with_event"] = json.dumps(
-                    [{"reference_doctype": "CRM Lead", "reference_docname": result["crm_lead"], "value": user_email}]
+                links.append({"reference_doctype": "CRM Lead", "reference_docname": result["crm_lead"], "value": user_email})
+            if result.get("vmator_appointment"):
+                # Ties the Event to its Vmator Appointment so feeds show one row per booking.
+                links.append(
+                    {
+                        "reference_doctype": "Vmator Appointment",
+                        "reference_docname": result["vmator_appointment"],
+                        "value": user_email,
+                    }
                 )
+            if links:
+                args["custom_doctype_link_with_event"] = json.dumps(links)
 
     resp = _create_event_for_appointment_group(
         appointment_group=appointment_group,
